@@ -202,11 +202,15 @@ export default async function handler(req, res) {
       });
     }
 
-    // Send confirmation email (async, don't wait for it)
+    // Send confirmation email (await it to complete before responding)
     console.log('Attempting to send email to:', trimmedEmail);
-    sendConfirmationEmail(trimmedEmail, trimmedName).catch(err => {
-      console.error('Email send error:', err);
-    });
+    try {
+      await sendConfirmationEmail(trimmedEmail, trimmedName);
+      console.log('Email sent successfully');
+    } catch (emailError) {
+      // Log but don't fail the signup if email fails
+      console.error('Email send error:', emailError);
+    }
 
     // Return success
     return res.status(201).json({
