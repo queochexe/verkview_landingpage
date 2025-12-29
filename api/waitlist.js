@@ -13,12 +13,16 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 async function sendConfirmationEmail(email, name) {
   const brevoApiKey = process.env.BREVO_API_KEY;
 
+  console.log('sendConfirmationEmail called for:', email);
+  console.log('Brevo API key exists:', !!brevoApiKey);
+
   if (!brevoApiKey) {
     console.warn('BREVO_API_KEY not set - skipping email');
     return;
   }
 
   try {
+    console.log('Sending email via Brevo API...');
     const response = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
       headers: {
@@ -199,6 +203,7 @@ export default async function handler(req, res) {
     }
 
     // Send confirmation email (async, don't wait for it)
+    console.log('Attempting to send email to:', trimmedEmail);
     sendConfirmationEmail(trimmedEmail, trimmedName).catch(err => {
       console.error('Email send error:', err);
     });
