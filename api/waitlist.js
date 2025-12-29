@@ -13,16 +13,16 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 async function sendConfirmationEmail(email, name) {
   const brevoApiKey = process.env.BREVO_API_KEY;
 
-  console.log('sendConfirmationEmail called for:', email);
-  console.log('Brevo API key exists:', !!brevoApiKey);
+  console.error('>>> sendConfirmationEmail called for:', email);
+  console.error('>>> Brevo API key exists:', !!brevoApiKey);
 
   if (!brevoApiKey) {
-    console.warn('BREVO_API_KEY not set - skipping email');
+    console.error('>>> BREVO_API_KEY not set - skipping email');
     return;
   }
 
   try {
-    console.log('Sending email via Brevo API...');
+    console.error('>>> Sending email via Brevo API...');
     const response = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
       headers: {
@@ -100,6 +100,9 @@ async function sendConfirmationEmail(email, name) {
 }
 
 export default async function handler(req, res) {
+  console.error('=== WAITLIST API CALLED ===');
+  console.error('Environment check - BREVO_API_KEY exists:', !!process.env.BREVO_API_KEY);
+
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -203,13 +206,13 @@ export default async function handler(req, res) {
     }
 
     // Send confirmation email (await it to complete before responding)
-    console.log('Attempting to send email to:', trimmedEmail);
+    console.error('>>> Attempting to send email to:', trimmedEmail);
     try {
       await sendConfirmationEmail(trimmedEmail, trimmedName);
-      console.log('Email sent successfully');
+      console.error('>>> Email sent successfully!');
     } catch (emailError) {
       // Log but don't fail the signup if email fails
-      console.error('Email send error:', emailError);
+      console.error('>>> Email send error:', emailError);
     }
 
     // Return success
