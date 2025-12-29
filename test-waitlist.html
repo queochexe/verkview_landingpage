@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Waitlist API Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 4px;
+            border-left: 4px solid #4CAF50;
+        }
+        input, button {
+            padding: 10px;
+            margin: 5px 0;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        input {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            display: none;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        pre {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Waitlist API Test Tool</h1>
+
+        <div class="info">
+            <strong>Current API Endpoint:</strong><br>
+            <code id="endpoint">https://kanban-api-wispy-sun-3028.fly.dev/api/waitlist</code><br><br>
+            <strong>Status:</strong> <span id="api-status">Checking...</span>
+        </div>
+
+        <div class="test-section">
+            <h2>Test 1: Submit Valid Email</h2>
+            <input type="email" id="test1-email" placeholder="test@example.com" value="test@example.com">
+            <input type="text" id="test1-name" placeholder="Name (optional)" value="Test User">
+            <button onclick="testSubmit('test1')">Submit to Waitlist</button>
+            <div id="test1-result" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Test 2: Duplicate Email</h2>
+            <p>Submit the same email twice to test duplicate handling</p>
+            <input type="email" id="test2-email" placeholder="duplicate@example.com" value="duplicate@example.com">
+            <button onclick="testSubmit('test2')">Submit (First Time)</button>
+            <button onclick="testSubmit('test2')">Submit (Second Time - Should Still Succeed)</button>
+            <div id="test2-result" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Test 3: Invalid Email</h2>
+            <input type="text" id="test3-email" placeholder="invalid-email" value="not-an-email">
+            <button onclick="testSubmit('test3')">Submit (Should Fail)</button>
+            <div id="test3-result" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Test 4: Get Waitlist Count</h2>
+            <button onclick="testCount()">Get Total Count</button>
+            <div id="test4-result" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Test 5: Rate Limiting</h2>
+            <p>Submit 4 times rapidly (limit is 3/hour)</p>
+            <button onclick="testRateLimit()">Test Rate Limit</button>
+            <div id="test5-result" class="result"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'https://kanban-api-wispy-sun-3028.fly.dev';
+        const WAITLIST_ENDPOINT = `${API_BASE_URL}/api/waitlist`;
+
+        // Check API health on load
+        async function checkAPIHealth() {
+            const statusEl = document.getElementById('api-status');
+            try {
+                const response = await fetch(`${API_BASE_URL}/health`);
+                const data = await response.json();
+                if (data.status === 'healthy') {
+                    statusEl.innerHTML = '<span style="color: green;">✅ API is healthy</span>';
+                } else {
+                    statusEl.innerHTML = '<span style="color: orange;">⚠️ API is responding but unhealthy</span>';
+                }
+            } catch (error) {
+                statusEl.innerHTML = '<span style="color: red;">❌ API is not reachable</span>';
+                console.error('Health check failed:', error);
+            }
+        }
+
+        async function testSubmit(testId) {
+            const emailInput = document.getElementById(`${testId}-email`);
+            const nameInput = document.getElementById(`${testId}-name`);
+            const resultDiv = document.getElementById(`${testId}-result`);
+            const button = event.target;
+
+            button.disabled = true;
+            button.textContent = 'Submitting...';
+
+            const payload = {
+                email: emailInput.value
+            };
+
+            if (nameInput && nameInput.value) {
+                payload.name = nameInput.value;
+            }
+
+            try {
+                const response = await fetch(WAITLIST_ENDPOINT, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = `
+                    <strong>Status:</strong> ${response.status} ${response.statusText}<br>
+                    <strong>Response:</strong><br>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                } else {
+                    resultDiv.className = 'result error';
+                }
+
+            } catch (error) {
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `
+                    <strong>Error:</strong> ${error.message}<br>
+                    <pre>${error.stack}</pre>
+                `;
+            } finally {
+                button.disabled = false;
+                button.textContent = button.textContent.replace('Submitting...', 'Submit');
+            }
+        }
+
+        async function testCount() {
+            const resultDiv = document.getElementById('test4-result');
+            const button = event.target;
+
+            button.disabled = true;
+            button.textContent = 'Loading...';
+
+            try {
+                const response = await fetch(`${WAITLIST_ENDPOINT}/count`);
+                const data = await response.json();
+
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result success';
+                resultDiv.innerHTML = `
+                    <strong>Total Waitlist Count:</strong> ${data.count}<br>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+
+            } catch (error) {
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `
+                    <strong>Error:</strong> ${error.message}
+                `;
+            } finally {
+                button.disabled = false;
+                button.textContent = 'Get Total Count';
+            }
+        }
+
+        async function testRateLimit() {
+            const resultDiv = document.getElementById('test5-result');
+            const button = event.target;
+
+            button.disabled = true;
+            button.textContent = 'Testing...';
+
+            const results = [];
+
+            for (let i = 1; i <= 4; i++) {
+                try {
+                    const response = await fetch(WAITLIST_ENDPOINT, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            email: `ratelimit${i}@test.com`
+                        })
+                    });
+
+                    const data = await response.json();
+                    results.push({
+                        attempt: i,
+                        status: response.status,
+                        success: response.ok,
+                        message: data.message || data.error || 'No message'
+                    });
+
+                    // Small delay between requests
+                    await new Promise(resolve => setTimeout(resolve, 100));
+
+                } catch (error) {
+                    results.push({
+                        attempt: i,
+                        status: 'Error',
+                        success: false,
+                        message: error.message
+                    });
+                }
+            }
+
+            resultDiv.style.display = 'block';
+            const rateLimited = results.some(r => r.status === 429);
+
+            if (rateLimited) {
+                resultDiv.className = 'result success';
+                resultDiv.innerHTML = '<strong>✅ Rate limiting is working!</strong><br><br>';
+            } else {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = '<strong>⚠️ Rate limiting may not be working (all requests succeeded)</strong><br><br>';
+            }
+
+            resultDiv.innerHTML += '<pre>' + JSON.stringify(results, null, 2) + '</pre>';
+
+            button.disabled = false;
+            button.textContent = 'Test Rate Limit';
+        }
+
+        // Run health check on page load
+        checkAPIHealth();
+    </script>
+</body>
+</html>
