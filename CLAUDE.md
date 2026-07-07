@@ -111,6 +111,31 @@ Update `API_BASE_URL` in `<script>` section of `index.html`
 ### View Waitlist Entries
 Access Supabase Dashboard → Table Editor → waitlist table
 
+## Analytics (PostHog)
+
+PostHog is loaded via CDN snippet in `<head>` of `index.html`. No build step required — it's a plain `<script>` tag.
+
+**Config:**
+- Token: `phc_s9JjgzMusUEmdaYV42zpX33V5C5iiSrYkG5ewuUZRJJN` (same project as `app.verkview.eu`)
+- Host: `https://eu.i.posthog.com`
+- `person_profiles: 'always'` — anonymous visitors tracked from first load
+- `cookie_domain: '.verkview.eu'` — shared with `app.verkview.eu` for cross-subdomain journey stitching
+- `autocapture: true` — button clicks, scroll depth, link clicks captured automatically
+- `session_recording: { maskAllInputs: true }` — email field masked for GDPR
+
+**Custom events tracked:**
+
+| Event | Where | Properties |
+|-------|-------|------------|
+| `waitlist_signup` | `handleWaitlistSubmit()` on success | `source: 'hero' \| 'cta'` |
+
+On `waitlist_signup`, `posthog.identify(email, { email })` is also called to link the anonymous session to the user's email. This allows PostHog to merge their pre-signup browsing session with their account in `app.verkview.eu` after they register.
+
+**Cross-domain funnel:**
+`verkview.eu` → `app.verkview.eu` use the same `.verkview.eu` cookie, so a visitor who lands on the marketing page, joins the waitlist, and later creates an app account appears as one continuous user in PostHog.
+
+Full analytics reference: `/Users/marcosimioni/Documents/development/kanban_project/docs/analytic/ANALYTICS_IMPLEMENTATION.md`
+
 ## Environment Variables
 
 Set in Vercel dashboard (Settings → Environment Variables):
